@@ -87,7 +87,37 @@
     }
     #main h2 { margin-top: 0; color: #fff; }
     #payload-details { color: #fff; }
-    .json-body { background: #0e2c38; color: #fff; padding: 20px 24px; border-radius: 8px; overflow-x: auto; font-size: 1.08em; line-height: 1.6; border: 1px solid #1a3a3a; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-top: 10px; }
+
+    .json-body {
+      background: #0e2c38;
+      color: #fff;
+      padding: 20px 24px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 1.08em;
+      line-height: 1.6;
+      border: 1px solid #1a3a3a;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-top: 10px;
+      white-space: pre-wrap; /* This ensures text wraps */
+      word-wrap: break-word; /* This ensures long words break and wrap onto the next line */
+    }
+
+    .query-body {
+      background: #0e2c38;
+      color: #fff;
+      padding: 20px 24px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 1.08em;
+      line-height: 1.6;
+      border: 1px solid #1a3a3a;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-top: 10px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
     .json-key { color: #f7c873; }
     .json-string { color: #7fffd4; }
     .json-number { color: #ffd700; }
@@ -345,98 +375,125 @@
     }
 
     function renderSidebar() {
-      callbackList.innerHTML = '';
-      payloads.forEach((payload, idx) => {
-        const li = document.createElement('li');
-        li.dataset.idx = idx;
-        const a = document.createElement('a');
-        a.className = 'callback-link' + (selectedIdx === idx ? ' selected' : '');
-        const method = (payload.method || '').toUpperCase();
-        let methodClass = 'http-method-default';
-        if (method === 'GET') methodClass = 'http-method-get';
-        else if (method === 'POST') methodClass = 'http-method-post';
-        else if (method === 'PUT') methodClass = 'http-method-put';
-        else if (method === 'DELETE') methodClass = 'http-method-delete';
-        else if (method === 'PATCH') methodClass = 'http-method-patch';
-        a.innerHTML = `
-          <span class='callback-link-content'><span>${formatDateEU(payload.timestamp)}</span><span class='http-method-badge ${methodClass}'>${escapeHtml(payload.method)}</span></span>
-        `;
-        a.href = '#';
-        li.appendChild(a);
-        callbackList.appendChild(li);
-      });
-    }
+    // Sort payloads by timestamp in descending order
+    payloads.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    callbackList.innerHTML = '';
+    payloads.forEach((payload, idx) => {
+      const li = document.createElement('li');
+      li.dataset.idx = idx;
+      const a = document.createElement('a');
+      a.className = 'callback-link' + (selectedIdx === idx ? ' selected' : '');
+      const method = (payload.method || '').toUpperCase();
+      let methodClass = 'http-method-default';
+      if (method === 'GET') methodClass = 'http-method-get';
+      else if (method === 'POST') methodClass = 'http-method-post';
+      else if (method === 'PUT') methodClass = 'http-method-put';
+      else if (method === 'DELETE') methodClass = 'http-method-delete';
+      else if (method === 'PATCH') methodClass = 'http-method-patch';
+
+      a.innerHTML = `
+        <span class='callback-link-content'><span>${formatDateEU(payload.timestamp)}</span><span class='http-method-badge ${methodClass}'>${escapeHtml(payload.method)}</span></span>
+      `;
+      a.href = '#';
+      li.appendChild(a);
+      callbackList.appendChild(li);
+    });
+  }
 
     function renderDetails() {
-      if (selectedIdx === null || !payloads[selectedIdx]) {
-        payloadDetails.innerHTML = 'No callback selected.';
-        return;
-      }
-      const payload = payloads[selectedIdx];
-      // Headers table
-      let headersRows = '';
-      for (const [key, value] of Object.entries(payload.headers || {})) {
-        headersRows += `<tr class="headers-table-row"><td class="headers-table-cell"><span class="header-key">${escapeHtml(key)}</span></td><td class="headers-table-cell" style="display:flex;align-items:center;justify-content:space-between;"><span class="header-value">${escapeHtml(String(value))}</span><button class="copy-btn" data-copy="${escapeHtml(String(value))}" style="margin-left:auto;">Copy</button></td></tr>`;
-      }
-      const headersTable = `
-        <div style="margin-bottom:18px;">
-          <strong>Headers:</strong>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead><tr><th style='text-align:left;'>Key</th><th style='text-align:left;'>Value</th></tr></thead>
-            <tbody>${headersRows}</tbody>
-          </table>
-        </div>
-      `;
-      payloadDetails.innerHTML = `
-        <div style="margin-bottom:12px;"><strong>Method:</strong> ${escapeHtml(payload.method)}<br><strong>Timestamp:</strong> ${escapeHtml(payload.timestamp)}</div>
-        ${headersTable}
-        <div><strong>Payload:</strong>
-          <span style="float:right;display:flex;align-items:center;gap:8px;">
-            <label style="font-weight:normal;font-size:0.95em;">
-              <input type="checkbox" id="format-json-toggle" checked> Format JSON
-            </label>
-            <button id="copy-raw-json-btn" class="copy-btn">Copy Raw JSON</button>
-          </span>
-        </div>
-        <div id="json-payload-view"></div>
-      `;
-      // Copy button logic for headers
-      document.querySelectorAll('.copy-btn').forEach(btn => {
-        if (btn.id !== 'copy-raw-json-btn') {
-          btn.onclick = function() {
-            navigator.clipboard.writeText(this.getAttribute('data-copy'));
-            showCopySuccess();
-          };
-        }
-      });
-      // JSON payload logic
-      const jsonPayloadView = document.getElementById('json-payload-view');
-      const formatToggle = document.getElementById('format-json-toggle');
-      const copyRawBtn = document.getElementById('copy-raw-json-btn');
-      let rawJson = '';
-      if (payload.body && Object.keys(payload.body).length > 0) {
-        rawJson = JSON.stringify(payload.body);
-        function updateJsonView() {
-          if (formatToggle.checked) {
-            jsonPayloadView.innerHTML = `<pre class="json-body">${syntaxHighlight(payload.body)}</pre>`;
-          } else {
-            jsonPayloadView.innerHTML = `<pre class="json-body">${escapeHtml(rawJson)}</pre>`;
-          }
-        }
-        formatToggle.onchange = updateJsonView;
-        updateJsonView();
-        copyRawBtn.onclick = function() {
-          navigator.clipboard.writeText(rawJson);
-          showCopySuccess();
-        };
-      } else {
-        jsonPayloadView.innerHTML = '<em>No JSON body</em>';
-        copyRawBtn.onclick = function() {
-          navigator.clipboard.writeText('');
-          showCopySuccess();
-        };
-      }
+    if (selectedIdx === null || !payloads[selectedIdx]) {
+      payloadDetails.innerHTML = 'No callback selected.';
+      return;
     }
+
+    const payload = payloads[selectedIdx];
+
+    // Convert query object to query string
+    const queryString = Object.entries(payload.query || {})
+      .map(([key, value]) => `${key}=${value}`)
+      .join('&');
+
+    // Headers table
+    let headersRows = '';
+    for (const [key, value] of Object.entries(payload.headers || {})) {
+      headersRows += `<tr class="headers-table-row"><td class="headers-table-cell"><span class="header-key">${escapeHtml(key)}</span></td><td class="headers-table-cell" style="display:flex;align-items:center;justify-content:space-between;"><span class="header-value">${escapeHtml(String(value))}</span><button class="copy-btn" data-copy="${escapeHtml(String(value))}" style="margin-left:auto;">Copy</button></td></tr>`;
+    }
+
+    const headersTable = `
+      <div style="margin-bottom:18px;">
+        <strong>Headers:</strong>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr><th style='text-align:left;'>Key</th><th style='text-align:left;'>Value</th></tr></thead>
+          <tbody>${headersRows}</tbody>
+        </table>
+      </div>
+    `;
+
+    payloadDetails.innerHTML = `
+      <div style="margin-bottom:12px;"><strong>Method:</strong> ${escapeHtml(payload.method)}<br><strong>Timestamp:</strong> ${escapeHtml(payload.timestamp)}</div>
+      ${headersTable}
+      <div><strong>Payload:</strong>
+        <span style="float:right;display:flex;align-items:center;gap:8px;">
+          <label style="font-weight:normal;font-size:0.95em;">
+            <input type="checkbox" id="format-json-toggle" checked> Format JSON
+          </label>
+          <button id="copy-raw-json-btn" class="copy-btn">Copy Raw JSON</button>
+        </span>
+      </div>
+      <div id="json-payload-view"></div>
+      <div style="margin-top:12px;">
+        <strong>Query String:</strong>
+        <button id="copy-query-string-btn" class="copy-btn" style="float:right;">Copy Query String</button>
+      </div>
+      <div class="query-body">${escapeHtml(queryString)}</div>
+    `;
+
+    // Copy button logic for headers
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      if (btn.id !== 'copy-raw-json-btn') {
+        btn.onclick = function() {
+          navigator.clipboard.writeText(this.getAttribute('data-copy'));
+          showCopySuccess();
+        };
+      }
+    });
+
+    // JSON payload logic
+    const jsonPayloadView = document.getElementById('json-payload-view');
+    const formatToggle = document.getElementById('format-json-toggle');
+    const copyRawBtn = document.getElementById('copy-raw-json-btn');
+    const copyQueryStringBtn = document.getElementById('copy-query-string-btn');
+
+    let rawJson = '';
+    if (payload.body && Object.keys(payload.body).length > 0) {
+      rawJson = JSON.stringify(payload.body);
+      function updateJsonView() {
+        if (formatToggle.checked) {
+          jsonPayloadView.innerHTML = `<pre class="json-body">${syntaxHighlight(payload.body)}</pre>`;
+        } else {
+          jsonPayloadView.innerHTML = `<pre class="json-body">${escapeHtml(rawJson)}</pre>`;
+        }
+      }
+      formatToggle.onchange = updateJsonView;
+      updateJsonView();
+      copyRawBtn.onclick = function() {
+        navigator.clipboard.writeText(rawJson);
+        showCopySuccess();
+      };
+    } else {
+      jsonPayloadView.innerHTML = '<em>No JSON body</em>';
+      copyRawBtn.onclick = function() {
+        navigator.clipboard.writeText('');
+        showCopySuccess();
+      };
+    }
+
+    copyQueryStringBtn.onclick = function() {
+      navigator.clipboard.writeText(queryString);
+      showCopySuccess();
+    };
+  }
     function escapeHtml(str) {
       return str.replace(/[&<>"']/g, function(tag) {
         const chars = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'};
@@ -486,14 +543,42 @@
       }
     };
 
+    // Variable to keep track of the number of new items
+    let newItemCount = 0;
+
+    // Function to update the document title
+    function updateTitle() {
+      console.log('Updating title with new item count:', newItemCount);
+      if (newItemCount > 0) {
+        document.title = `(${newItemCount}) Webhook Inspector`;
+      } else {
+        document.title = 'Webhook Inspector';
+      }
+    }
+
+
+    // Listen for visibility change to reset the new item count
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        newItemCount = 0;
+        updateTitle();
+      }
+    });
+
     socket.on('init', (data) => {
+      console.log('Init webhook'); // Debugging line
       payloads = data;
       selectedIdx = payloads.length > 0 ? 0 : null;
       renderSidebar();
       renderDetails();
+      updateTitle();
     });
 
     socket.on('webhook', (payload) => {
+      console.log('New webhook received'); // Debugging line
+      newItemCount++;
+      updateTitle();
+
       payloads.unshift(payload);
       selectedIdx = 0;
       renderSidebar();
@@ -507,7 +592,8 @@
       selectedIdx = null;
       renderSidebar();
       renderDetails();
+      updateTitle();
     };
   </script>
 </body>
-</html> 
+</html>

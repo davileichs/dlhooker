@@ -25,16 +25,18 @@ app.all('/webhook/:id', (req, res) => {
     method: req.method,
     headers: req.headers,
     body: req.body,
-    query: req.query,
+    query: req.query, // This captures GET parameters
     timestamp: new Date().toISOString(),
   };
+
   if (!payloads[sessionId]) payloads[sessionId] = [];
   payloads[sessionId].push(payload);
+
   io.to(sessionId).emit('webhook', payload);
   res.json({ status: 'received', payload });
 });
 
-// Add this after the webhook endpoint
+// Endpoint to reset payloads for a session
 app.post('/reset/:id', (req, res) => {
   const sessionId = req.params.id;
   payloads[sessionId] = [];
@@ -54,4 +56,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
-}); 
+});
