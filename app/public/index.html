@@ -556,15 +556,6 @@
       }
     }
 
-
-    // Listen for visibility change to reset the new item count
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        newItemCount = 0;
-        updateTitle();
-      }
-    });
-
     socket.on('init', (data) => {
       console.log('Init webhook'); // Debugging line
       payloads = data;
@@ -594,6 +585,14 @@
       renderDetails();
       updateTitle();
     };
+
+    // Listen for visibility change to reset the new item count
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        newItemCount = 0;
+        updateTitle();
+      }
+    });
   </script>
 </body>
 </html>
